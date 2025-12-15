@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Data files to ignore
+my_games.pgn
+config.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter and VSCode
+.ipynb_checkpoints/
+.vscode/
+
+# Other
+*.log
