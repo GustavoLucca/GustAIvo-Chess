@@ -1,0 +1,6 @@
+torch
+numpy
+torchvision
+python-chess
+requests
+pygame

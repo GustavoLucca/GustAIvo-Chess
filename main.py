@@ -1,6 +1,21 @@
 import pygame
 import chess
 import random
+import torch
+import numpy as np
+from play import GhostBot, MODEL_PATH
+import time
+
+# --- CONFIG ---
+WIDTH, HEIGHT = 512, 512
+SQ_SIZE = WIDTH // 8
+WHITE = (240, 217, 181)
+import pygame
+import chess
+import random
+import torch
+import numpy as np
+from play import GhostBot, MODEL_PATH
 import time
 
 # --- CONFIG ---
@@ -15,6 +30,7 @@ PIECE_UNICODE = {
     'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔',
     'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚'
 }
+
 
 def draw_board(screen, board, selected_square=None):
     try:
@@ -41,15 +57,26 @@ def draw_board(screen, board, selected_square=None):
                 text_rect = text.get_rect(center=rect.center)
                 screen.blit(text, text_rect)
 
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("My Chess Bot")
+    pygame.display.set_caption("My Chess Bot (Ghost Bot)")
     clock = pygame.time.Clock()
-    
+
+    # Choose side
+    choice = None
+    while choice not in ("w", "b"):
+        choice = input("Play as White or Black? (w/b): ").strip().lower()
+
+    human_color = chess.WHITE if choice == "w" else chess.BLACK
+    bot_color = chess.BLACK if human_color == chess.WHITE else chess.WHITE
+
     board = chess.Board()
     selected_square = None
-    
+
+    # Instantiate bot once
+    bot = GhostBot(MODEL_PATH)
 
     running = True
     game_over = False
@@ -60,23 +87,25 @@ def main():
                 running = False
 
             if not game_over:
-                # HUMAN MOVE (WHITE)
-                if board.turn == chess.WHITE and event.type == pygame.MOUSEBUTTONDOWN:
+                # HUMAN MOVE (only when it's the human's turn)
+                if board.turn == human_color and event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = event.pos
                     col, row = x // SQ_SIZE, y // SQ_SIZE
                     clicked_square = chess.square(col, 7-row)
 
                     if selected_square is None:
-                        # Select piece
-                        if board.piece_at(clicked_square) and board.piece_at(clicked_square).color == chess.WHITE:
+                        # Select piece (only allow selecting human's pieces)
+                        if board.piece_at(clicked_square) and board.piece_at(clicked_square).color == human_color:
                             selected_square = clicked_square
                     else:
                         # Try Move
                         move = chess.Move(selected_square, clicked_square)
 
                         # Handle Promotion (Auto-promote to Queen for simplicity)
-                        if board.piece_at(selected_square).piece_type == chess.PAWN:
-                            if (chess.square_rank(clicked_square) == 7):
+                        piece = board.piece_at(selected_square)
+                        if piece and piece.piece_type == chess.PAWN:
+                            promot_rank = 7 if piece.color == chess.WHITE else 0
+                            if chess.square_rank(clicked_square) == promot_rank:
                                 move = chess.Move(selected_square, clicked_square, promotion=chess.QUEEN)
 
                         if move in board.legal_moves:
@@ -84,20 +113,18 @@ def main():
                             selected_square = None
                         else:
                             # Deselect or select new piece
-                            selected_square = clicked_square if board.piece_at(clicked_square) and board.piece_at(clicked_square).color == chess.WHITE else None
+                            selected_square = clicked_square if board.piece_at(clicked_square) and board.piece_at(clicked_square).color == human_color else None
 
         if not game_over:
-            # AI MOVE (BLACK)
-            if board.turn == chess.BLACK and not board.is_game_over():
+            # BOT MOVE (when it's bot's turn)
+            if board.turn == bot_color and not board.is_game_over():
                 draw_board(screen, board, selected_square)
                 pygame.display.flip()
 
-                # --- AGENT GOES HERE ---
-                time.sleep(0.5) # Fake "thinking" time
-                legal_moves = list(board.legal_moves)
-                random_move = random.choice(legal_moves)
-                board.push(random_move)
-                # -----------------------------
+                # Bot thinks and plays
+                time.sleep(0.5)
+                bot_move = bot.predict_move(board)
+                board.push(bot_move)
 
             # Check for game over
             if board.is_game_over():
@@ -131,6 +158,7 @@ def main():
         clock.tick(30)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

@@ -10,6 +10,7 @@ ENV/
 # Data files to ignore
 my_games.pgn
 config.json
+ghost_bot.pth
 
 # OS files
 .DS_Store
